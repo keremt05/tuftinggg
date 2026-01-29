@@ -1,0 +1,216 @@
+<!DOCTYPE html>  
+<html lang="tr">  
+<head>  
+<meta charset="UTF-8">  
+<title>Tufting Atölyesi</title>  
+<meta name="viewport" content="width=device-width, initial-scale=1.0">  
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">  
+  
+<style>  
+*{box-sizing:border-box;font-family:Poppins,sans-serif;margin:0;padding:0}  
+body{  
+ background:linear-gradient(135deg,#081a2b,#0b3c5d,#3b1fa7,#081a2b);  
+ background-size:300% 300%;  
+ animation:bg 20s infinite;  
+ color:#eafcff;  
+ min-height:100vh;  
+}  
+@keyframes bg{0%{background-position:0%}50%{background-position:100%}100%{background-position:0%}}  
+header{text-align:center;padding:30px}  
+h1{  
+ font-size:38px;  
+ background:linear-gradient(135deg,#00e5ff,#7a5cff);  
+ -webkit-background-clip:text;  
+ -webkit-text-fill-color:transparent;  
+}  
+.admin-btn{  
+ position:fixed;top:12px;right:12px;  
+ width:34px;height:34px;border-radius:50%;  
+ background:linear-gradient(135deg,#00e5ff,#7a5cff);  
+ font-weight:700;cursor:pointer;z-index:10;  
+}  
+.container{max-width:1100px;width:95%;margin:auto}  
+.card{  
+ background:rgba(10,20,40,.85);  
+ padding:30px;border-radius:20px;margin-top:40px;  
+ box-shadow:0 20px 40px rgba(0,0,0,.6);  
+}  
+input,button{  
+ width:100%;padding:12px;margin-top:12px;  
+ border:none;border-radius:14px;font-size:15px;  
+}  
+input{background:#0f1b2e;color:#eafcff}  
+button{  
+ background:linear-gradient(135deg,#00e5ff,#5b2cff);  
+ font-weight:600;cursor:pointer;  
+}  
+#productList,#adminProducts{  
+ display:flex;flex-wrap:wrap;justify-content:space-between;  
+}  
+.product{  
+ width:48%;margin-top:20px;padding:15px;  
+ background:rgba(10,20,40,.85);  
+ border-radius:18px;border:1px solid rgba(0,229,255,.4);  
+}  
+@media(max-width:768px){.product{width:100%}}  
+#cartBox{  
+ position:fixed;bottom:15px;right:15px;width:260px;  
+ background:rgba(10,20,40,.95);  
+ border-radius:16px;padding:15px;  
+ box-shadow:0 10px 30px rgba(0,0,0,.6);  
+ z-index:20;  
+}  
+</style>  
+</head>  
+  
+<body>  
+  
+<header>  
+  <h1>TUFTING ATÖLYESİ</h1>  
+  <p>El Yapımı • Özel Tasarım</p>  
+  <button class="admin-btn" onclick="showAdminLogin()">A</button>  
+</header>  
+  
+<div class="container" id="mainContainer">  
+  <div id="productList"></div>  
+</div>  
+  
+<div id="cartBox">  
+ <h3>🛒 Sipariş</h3>  
+ <div id="cartItems"></div>  
+ <button onclick="sendWhatsApp()">WhatsApp’tan Yaz</button>  
+</div>  
+  
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>  
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>  
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>  
+  
+<script>  
+firebase.initializeApp({  
+ apiKey:"AIzaSyDCLW8mgFd_wpcjr5YwZDL87X6hBldSCto",  
+ authDomain:"tuftingatolyesi-3ec0c.firebaseapp.com",  
+ projectId:"tuftingatolyesi-3ec0c"  
+});  
+const auth=firebase.auth();  
+const db=firebase.firestore();  
+  
+const WHATSAPP_NO="905555555555";  
+let cart=[];  
+  
+/* FOTOĞRAF → DİREKT URL */  
+function showPhoto(url){  
+ window.open(url, "_blank");  
+}  
+  
+/* RASTGELE KOD */  
+async function generateRandomUniqueCode(){  
+ const used=new Set();  
+ const snap=await db.collection("products").get();  
+ snap.forEach(d=>used.add(d.data().code));  
+ while(true){  
+  const c=String(Math.floor(Math.random()*1000)).padStart(3,"0");  
+  if(!used.has(c)) return c;  
+ }  
+}  
+  
+/* SEPET */  
+function addToCart(name,code){  
+ cart=[{name,code}];  
+ cartItems.innerHTML=`${name}<br><b>Kod:</b> ${code}`;  
+}  
+function sendWhatsApp(){  
+ if(cart.length===0)return alert("Ürün seç");  
+ const msg=`Merhaba, sayfanızda gördüğüm ${cart[0].code} kodlu ürün hakkında bilgi almak istiyorum.`;  
+ window.open(`https://wa.me/${WHATSAPP_NO}?text=${encodeURIComponent(msg)}`,"_blank");  
+}  
+  
+/* VİTRİN */  
+function loadProducts(){  
+ cartBox.style.display="block";  
+ db.collection("products").get().then(s=>{  
+  productList.innerHTML="";  
+  s.forEach(d=>{  
+   const p=d.data();  
+   productList.innerHTML+=`  
+   <div class="product">  
+    <h3>${p.name}</h3>  
+    <p>${p.desc}</p>  
+    <p><b>${p.price}₺</b></p>  
+    <small>Ürün Kodu: <b>${p.code}</b></small>  
+    <button onclick="showPhoto('${p.photoURL}')">Fotoğrafı Gör</button>  
+    <button onclick="addToCart('${p.name}','${p.code}')">Sipariş Et</button>  
+   </div>`;  
+  });  
+ });  
+}  
+  
+/* ADMIN */  
+function showAdminLogin(){  
+ cartBox.style.display="none";  
+ mainContainer.innerHTML=`  
+ <div class="card">  
+  <h2>Admin Giriş</h2>  
+  <input id="adminEmail" placeholder="Email">  
+  <input id="adminPass" type="password" placeholder="Şifre">  
+  <button onclick="adminLogin()">Giriş</button>  
+ </div>`;  
+}  
+function adminLogin(){  
+ auth.signInWithEmailAndPassword(adminEmail.value,adminPass.value)  
+ .then(showAdminPanel)  
+ .catch(()=>alert("Hatalı giriş"));  
+}  
+function showAdminPanel(){  
+ mainContainer.innerHTML=`  
+ <div class="card">  
+  <h2>Admin Panel</h2>  
+  <input id="prodName" placeholder="Ürün Adı">  
+  <input id="prodDesc" placeholder="Açıklama">  
+  <input id="prodPrice" placeholder="Fiyat">  
+  <input id="prodPhotoURL" placeholder="Foto URL">  
+  <button onclick="addProduct()">Ürün Ekle</button>  
+  <button onclick="goHome()">Siteye Dön</button>  
+  <div id="adminProducts"></div>  
+ </div>`;  
+ loadAdminProducts();  
+}  
+async function addProduct(){  
+ const code=await generateRandomUniqueCode();  
+ await db.collection("products").add({  
+  name:prodName.value,  
+  desc:prodDesc.value,  
+  price:Number(prodPrice.value),  
+  photoURL:prodPhotoURL.value,  
+  code  
+ });  
+ loadAdminProducts();  
+}  
+function loadAdminProducts(){  
+ db.collection("products").get().then(s=>{  
+  adminProducts.innerHTML="";  
+  s.forEach(d=>{  
+   const p=d.data();  
+   adminProducts.innerHTML+=`  
+   <div class="product">  
+    <b>${p.name}</b><br>  
+    Kod: ${p.code}  
+    <button onclick="deleteProduct('${d.id}')">Sil</button>  
+   </div>`;  
+  });  
+ });  
+}  
+function deleteProduct(id){  
+ if(confirm("Silinsin mi?")){  
+  db.collection("products").doc(id).delete().then(loadAdminProducts);  
+ }  
+}  
+function goHome(){  
+ mainContainer.innerHTML=`<div id="productList"></div>`;  
+ loadProducts();  
+}  
+  
+loadProducts();  
+</script>  
+  
+</body>  
+</html>
